@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ethereal Flood | Genshin Impact</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-deep:#04060d;
+  --bg:#080b17;
+  --bg-mid:#0e132a;
+  --panel:rgba(255,255,255,0.045);
+  --panel-hover:rgba(255,255,255,0.07);
+  --border:rgba(148,197,255,0.14);
+  --border-hi:rgba(148,197,255,0.35);
+  --sky:#4fd8ff;
+  --sky-deep:#1f8fc9;
+  --violet:#9d8cf9;
+  --gold:#e8c988;
+  --ink:#eef3ff;
+  --ink-dim:rgba(238,243,255,0.62);
+  --taken:#707c99;
+  --free:#38e0a6;
+  --owner:#ffd166;
+  --radius:20px;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --shadow-sm:0 8px 24px rgba(0,0,0,0.35);
+  --shadow-md:0 20px 50px rgba(0,0,0,0.5);
+  --glow:0 0 22px rgba(79,216,255,0.35);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:
+    radial-gradient(ellipse 1000px 600px at 15% -10%, rgba(157,140,249,0.16), transparent 55%),
+    radial-gradient(ellipse 900px 700px at 100% 10%, rgba(79,216,255,0.14), transparent 55%),
+    radial-gradient(ellipse 700px 500px at 50% 110%, rgba(79,216,255,0.08), transparent 60%),
+    var(--bg-deep);
+  color:var(--ink);
+  font-family:'Nunito',sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+h2,h3,h4{font-family:'Baloo 2',sans-serif;letter-spacing:0.3px;}
+.brand-font{font-family:'Cinzel',serif;}
+::-webkit-scrollbar{width:9px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:linear-gradient(var(--sky),var(--violet));border-radius:5px;}
+
+/* ============ CURSOR TRAIL ============ */
+.trail-dot{
+  position:fixed;top:0;left:0;width:7px;height:7px;border-radius:50%;
+  background:radial-gradient(circle,rgba(159,225,255,0.9),rgba(79,216,255,0));
+  pointer-events:none;z-index:9999;transform:translate(-50%,-50%);will-change:transform,opacity;
+}
+
+/* ============ AMBIENT PARTICLES ============ */
+#glide-layer{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.mote{position:absolute;border-radius:50%;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95), rgba(79,216,255,0.25));animation:drift linear infinite;}
+@keyframes drift{0%{transform:translateY(0) translateX(0);opacity:.2;}50%{transform:translateY(-46px) translateX(16px);opacity:.75;}100%{transform:translateY(0) translateX(0);opacity:.2;}}
+
+/* ============ LOADING SCREEN ============ */
+#loading-screen{
+  position:fixed;inset:0;z-index:2000;
+  background:radial-gradient(circle at 50% 42%, #131a38 0%, var(--bg-deep) 75%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;
+  transition:opacity 0.9s var(--ease), visibility 0.9s var(--ease);
+}
+#loading-screen.hide{opacity:0;visibility:hidden;pointer-events:none;}
+.load-ring-wrap{position:relative;width:130px;height:130px;display:flex;align-items:center;justify-content:center;}
+.load-ring-wrap.finish{transform:scale(1.3);opacity:0;transition:transform .8s var(--ease),opacity .8s var(--ease);}
+.load-ring-svg{position:absolute;inset:0;transform:rotate(-90deg);}
+.load-ring-bg{fill:none;stroke:rgba(148,197,255,0.12);stroke-width:3;}
+.load-ring-fg{fill:none;stroke:url(#ringGrad);stroke-width:3;stroke-linecap:round;stroke-dasharray:377;stroke-dashoffset:377;transition:stroke-dashoffset .25s linear;filter:drop-shadow(0 0 8px rgba(79,216,255,0.7));}
+.load-core{width:76px;height:76px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(159,225,255,0.5), rgba(20,28,55,0.9));border:1px solid rgba(148,197,255,0.35);display:flex;align-items:center;justify-content:center;animation:corePulse 2.4s ease-in-out infinite;font-size:26px;}
+@keyframes corePulse{0%,100%{box-shadow:0 0 20px rgba(79,216,255,0.35);}50%{box-shadow:0 0 40px rgba(79,216,255,0.65);}}
+.load-pct{position:absolute;bottom:-34px;font-family:'Cinzel',serif;font-size:14px;letter-spacing:2px;color:var(--sky);}
+.load-text{font-family:'Cinzel',serif;font-size:13px;letter-spacing:6px;color:var(--ink-dim);text-transform:uppercase;transition:opacity .5s;}
+.load-text.finish{opacity:0;}
+
+/* ============ HEADER ============ */
+header{
+  position:fixed;top:0;left:0;right:0;z-index:500;display:flex;align-items:center;justify-content:space-between;
+  padding:14px 5%;background:rgba(6,9,20,0.6);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);
+  opacity:0;transform:translateY(-16px);transition:opacity .7s var(--ease), transform .7s var(--ease);
+}
+header.show{opacity:1;transform:translateY(0);}
+.nav-brand{display:flex;align-items:center;gap:12px;cursor:pointer;}
+.logo-slot{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(159,225,255,0.55), rgba(20,28,55,0.9));border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;box-shadow:var(--glow);font-size:18px;}
+.nav-brand .nav-title{font-family:'Cinzel',serif;font-size:19px;letter-spacing:1.5px;background:linear-gradient(90deg,var(--sky),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent;}
+nav ul{list-style:none;display:flex;gap:6px;align-items:center;}
+nav a{color:var(--ink-dim);text-decoration:none;font-weight:700;font-size:14px;padding:9px 15px;border-radius:30px;transition:all .3s var(--ease);cursor:pointer;}
+nav a:hover, nav a.active{color:var(--bg-deep);background:linear-gradient(135deg,var(--sky),var(--violet));box-shadow:var(--glow);}
+.tg-btn{
+  display:flex;align-items:center;gap:6px;padding:8px 15px;border-radius:30px;
+  background:rgba(79,216,255,0.1);border:1px solid var(--border-hi);color:var(--sky);
+  font-weight:800;font-size:13px;text-decoration:none;transition:all .3s var(--ease);margin-left:6px;
+}
+.tg-btn:hover{background:linear-gradient(135deg,var(--sky),var(--violet));color:var(--bg-deep);box-shadow:var(--glow);}
+.sound-toggle{
+  width:38px;height:38px;border-radius:50%;border:1px solid var(--border);background:var(--panel);
+  color:var(--ink-dim);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;
+  transition:all .3s var(--ease);margin-left:6px;position:relative;
+}
+.sound-toggle:hover{border-color:var(--border-hi);color:var(--sky);box-shadow:var(--glow);}
+.sound-toggle.on{color:var(--sky);border-color:var(--border-hi);box-shadow:var(--glow);}
+.sound-toggle.on::after{
+  content:"";position:absolute;inset:-3px;border-radius:50%;border:1.5px solid var(--sky);
+  opacity:.5;animation:soundPulse 1.6s ease-out infinite;
+}
+@keyframes soundPulse{0%{transform:scale(0.85);opacity:.6;}100%{transform:scale(1.35);opacity:0;}}
+.burger{display:none;flex-direction:column;gap:5px;cursor:pointer;z-index:600;}
+.burger span{width:24px;height:2.5px;background:var(--ink);border-radius:2px;}
+.header-right{display:flex;align-items:center;}
+
+/* ============ LAYOUT ============ */
+main{position:relative;z-index:2;padding-top:86px;}
+.page{display:none;}
+.page.active{display:block;animation:fadeSlide .6s var(--ease);}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+.container{max-width:1180px;margin:0 auto;padding:0 5%;}
+
+/* ============ HERO ============ */
+.hero{display:flex;flex-direction:column;align-items:center;text-align:center;padding:60px 5% 34px;}
+.reveal{opacity:0;transform:translateY(22px);}
+body.site-revealed .reveal{animation:revealUp .85s var(--ease) forwards;}
+body.site-revealed .hero-badge.reveal{animation-delay:.05s;}
+body.site-revealed .hero h1.reveal{animation-delay:.18s;}
+body.site-revealed .hero p.tagline.reveal{animation-delay:.34s;}
+body.site-revealed .hero-actions.reveal{animation-delay:.5s;}
+body.site-revealed .info-strip.reveal{animation-delay:.66s;}
+body.site-revealed .announce-bar.reveal{animation-delay:.78s;}
+@keyframes revealUp{0%{opacity:0;transform:translateY(22px);}100%{opacity:1;transform:translateY(0);}}
+
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);color:var(--sky);font-weight:800;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:7px 18px;border-radius:30px;margin-bottom:20px;}
+.hero h1{
+  font-family:'Cinzel',serif;font-size:clamp(32px,6vw,58px);font-weight:700;letter-spacing:1px;
+  background:linear-gradient(100deg,var(--sky) 0%,var(--violet) 55%,var(--gold) 100%);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:shine 7s linear infinite;filter:drop-shadow(0 0 26px rgba(79,216,255,0.25));
+}
+@keyframes shine{0%{background-position:0% 50%;}100%{background-position:220% 50%;}}
+.hero p.tagline{margin-top:16px;font-size:16.5px;color:var(--ink-dim);max-width:620px;line-height:1.65;font-weight:600;}
+.hero-actions{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap;justify-content:center;}
+
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;border-radius:30px;border:none;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:800;font-size:14.5px;letter-spacing:0.3px;transition:transform .3s var(--ease), box-shadow .3s;}
+.btn-primary{background:linear-gradient(135deg,var(--sky),var(--sky-deep));color:#04121c;box-shadow:0 10px 26px rgba(79,216,255,0.3);}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(79,216,255,0.5);}
+.btn-ghost{background:var(--panel);color:var(--ink);border:1.5px solid var(--border);}
+.btn-ghost:hover{transform:translateY(-3px);border-color:var(--sky);box-shadow:var(--glow);}
+.btn-outline{background:transparent;color:var(--violet);border:1.5px solid rgba(157,140,249,0.4);}
+.btn-outline:hover{transform:translateY(-3px);border-color:var(--violet);box-shadow:0 0 22px rgba(157,140,249,0.35);}
+.btn-sm{padding:8px 16px;font-size:12.5px;border-radius:20px;}
+
+/* ============ ANNOUNCE BAR ============ */
+.announce-bar{
+  max-width:820px;margin:36px auto 0;background:var(--panel);border:1px solid var(--border);
+  border-radius:16px;padding:16px 22px;display:flex;align-items:center;gap:14px;text-align:left;
+  box-shadow:var(--shadow-sm);
+}
+.announce-bar .a-icon{font-size:22px;flex-shrink:0;}
+.announce-bar .a-text{font-size:14px;color:var(--ink-dim);font-weight:600;line-height:1.5;}
+.announce-bar .a-text b{color:var(--sky);}
+
+/* ============ INFO STRIP ============ */
+.info-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:980px;margin:32px auto 0;}
+.info-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px 12px;text-align:center;box-shadow:var(--shadow-sm);transition:transform .35s var(--ease), box-shadow .35s, border-color .35s;position:relative;overflow:hidden;}
+.info-card::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,rgba(79,216,255,0.08),transparent 60%);}
+.info-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-md);border-color:var(--border-hi);}
+.info-num{font-family:'Cinzel',serif;font-size:28px;color:var(--sky);text-shadow:0 0 14px rgba(79,216,255,0.4);position:relative;}
+.info-label{font-size:12px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-top:2px;position:relative;}
+
+/* ============ CHAR OF THE DAY ============ */
+.cotd{
+  max-width:520px;margin:46px auto 0;background:var(--panel);border:1px solid var(--border-hi);
+  border-radius:var(--radius);padding:24px;text-align:center;box-shadow:var(--glow);position:relative;overflow:hidden;
+}
+.cotd::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 0%, rgba(157,140,249,0.18), transparent 70%);}
+.cotd-label{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--violet);font-weight:800;position:relative;}
+.cotd-name{font-family:'Cinzel',serif;font-size:26px;margin:8px 0 4px;position:relative;}
+.cotd-region{font-size:13px;color:var(--ink-dim);font-weight:700;position:relative;margin-bottom:14px;}
+
+/* ============ FAVORITE STAR ============ */
+.char-top-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.fav-star{
+  background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:0 2px;
+  color:rgba(238,243,255,0.25);transition:color .25s, transform .25s;flex-shrink:0;
+}
+.fav-star:hover{transform:scale(1.2);color:rgba(232,201,136,0.6);}
+.fav-star.active{color:var(--owner);text-shadow:0 0 10px rgba(255,209,102,0.6);}
+.fav-star.active:hover{color:var(--owner);}
+
+/* ============ THEME PICKER ============ */
+.theme-toggle{
+  width:38px;height:38px;border-radius:50%;border:1px solid var(--border);background:var(--panel);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;
+  transition:all .3s var(--ease);margin-left:6px;position:relative;
+}
+.theme-toggle:hover{border-color:var(--border-hi);box-shadow:var(--glow);}
+.theme-popover{
+  position:absolute;top:50px;right:0;background:var(--bg-mid);border:1px solid var(--border-hi);
+  border-radius:16px;padding:14px;box-shadow:var(--shadow-md);display:none;gap:10px;z-index:700;
+  min-width:190px;
+}
+.theme-popover.show{display:flex;flex-wrap:wrap;animation:fadeIn .25s var(--ease);}
+.theme-popover-title{width:100%;font-size:11.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-dim);font-weight:800;margin-bottom:2px;}
+.theme-swatch{
+  width:34px;height:34px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.12);
+  transition:transform .25s var(--ease), border-color .25s;position:relative;flex-shrink:0;
+}
+.theme-swatch:hover{transform:scale(1.12);}
+.theme-swatch.active{border-color:#fff;}
+.theme-swatch.active::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.6);}
+
+/* ============ FAVORITES EMPTY STATE ============ */
+.fav-empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--ink-dim);font-weight:700;}
+.fav-empty .fe-icon{font-size:40px;display:block;margin-bottom:14px;opacity:.6;}
+
+/* ============ EASTER EGG BUBBLE (eyes) ============ */
+.eyes{position:relative;display:inline-block;cursor:pointer;}
+.eye-joke{
+  position:absolute;bottom:145%;left:50%;transform:translateX(-50%) scale(0.85);
+  background:var(--bg-mid);border:1px solid var(--border-hi);border-radius:12px;
+  padding:9px 15px;font-size:12.5px;color:var(--ink);white-space:nowrap;font-weight:700;
+  opacity:0;pointer-events:none;transition:opacity .3s var(--ease), transform .3s var(--ease);
+  box-shadow:var(--shadow-md);z-index:50;
+}
+.eye-joke::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--border-hi);}
+.eye-joke.show{opacity:1;transform:translateX(-50%) scale(1);}
+
+/* ============ BOTTOM MUSIC PLAYER ============ */
+#music-bar{
+  position:fixed;left:0;right:0;bottom:0;z-index:800;background:rgba(8,11,23,0.85);backdrop-filter:blur(18px);
+  border-top:1px solid var(--border);padding:10px 5% 10px;display:flex;align-items:center;gap:16px;
+}
+.mb-track{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 200px;}
+.mb-thumb{
+  width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--sky),var(--violet));
+  display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;box-shadow:var(--glow);
+}
+.mb-meta{min-width:0;}
+.mb-name{font-size:13.5px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}
+.mb-time{font-size:11.5px;color:var(--ink-dim);font-weight:700;margin-top:1px;}
+.mb-controls{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.mb-btn{
+  width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--panel);
+  color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;
+  transition:all .25s var(--ease);
+}
+.mb-btn:hover{border-color:var(--border-hi);color:var(--sky);box-shadow:var(--glow);}
+.mb-btn.play{width:40px;height:40px;font-size:16px;background:linear-gradient(135deg,var(--sky),var(--sky-deep));color:#04121c;border:none;}
+.mb-progress-wrap{flex:2 1 220px;display:flex;align-items:center;gap:10px;min-width:0;}
+.mb-progress{
+  position:relative;flex:1;height:5px;border-radius:4px;background:rgba(255,255,255,0.1);cursor:pointer;
+}
+.mb-progress i{position:absolute;left:0;top:0;height:100%;width:0%;border-radius:4px;background:linear-gradient(90deg,var(--sky),var(--violet));}
+.mb-progress .mb-knob{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 6px rgba(0,0,0,0.4);transform:translate(-50%,-50%);left:0%;}
+.mb-list-btn{
+  width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--panel);
+  color:var(--ink-dim);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;
+  flex-shrink:0;transition:all .25s var(--ease);
+}
+.mb-list-btn:hover, .mb-list-btn.active{border-color:var(--border-hi);color:var(--sky);box-shadow:var(--glow);}
+#playlist-panel{
+  position:fixed;right:5%;bottom:74px;width:280px;max-width:80vw;max-height:280px;overflow-y:auto;
+  background:var(--bg-mid);border:1px solid var(--border-hi);border-radius:16px;padding:10px;
+  box-shadow:var(--shadow-md);display:none;flex-direction:column;gap:4px;z-index:800;
+}
+#playlist-panel.show{display:flex;animation:fadeIn .25s var(--ease);}
+.pl-title{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-dim);font-weight:800;padding:4px 8px 8px;}
+.pl-item{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;cursor:pointer;
+  transition:background .2s;
+}
+.pl-item:hover{background:rgba(255,255,255,0.06);}
+.pl-item.active{background:rgba(79,216,255,0.12);}
+.pl-thumb{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--sky),var(--violet));display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.pl-name{font-size:13px;font-weight:700;color:var(--ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pl-now{font-size:10px;color:var(--sky);font-weight:800;letter-spacing:.5px;flex-shrink:0;}
+@media (max-width:700px){
+  .mb-meta .mb-name{max-width:110px;}
+  .mb-progress-wrap{flex-basis:100px;}
+  #music-bar{gap:10px;padding:8px 3%;}
+  #playlist-panel{right:3%;width:230px;}
+}
+main{padding-bottom:82px;}
+
+/* ============ VISITS BADGE ============ */
+.visits-badge{
+  display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:var(--panel);
+  border:1px solid var(--border);border-radius:30px;padding:8px 18px;font-size:13px;
+  font-weight:800;color:var(--ink-dim);
+}
+.visits-badge .v-num{color:var(--sky);font-family:'Cinzel',serif;font-size:15px;}
+
+/* ============ TOP ROLES ============ */
+.top-roles-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;padding-bottom:20px;}
+.top-role-card{
+  position:relative;background:var(--panel);border:1px solid var(--border);border-radius:16px;
+  padding:18px 18px 16px;box-shadow:var(--shadow-sm);transition:transform .3s var(--ease), box-shadow .3s, border-color .3s;
+  overflow:hidden;cursor:pointer;
+}
+.top-role-card:hover{transform:translateY(-5px);box-shadow:var(--shadow-md);border-color:var(--border-hi);}
+.top-role-rank{
+  position:absolute;top:-6px;right:8px;font-family:'Cinzel',serif;font-size:44px;font-weight:800;
+  color:rgba(255,255,255,0.06);line-height:1;
+}
+.top-role-emblem{font-size:22px;margin-bottom:8px;filter:drop-shadow(0 0 8px rgba(79,216,255,0.35));}
+.top-role-name{font-weight:800;font-size:16px;color:var(--ink);position:relative;}
+.top-role-region{font-size:12px;color:var(--ink-dim);font-weight:700;margin-top:2px;position:relative;}
+.top-role-views{
+  display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:13px;font-weight:800;
+  color:var(--gold);position:relative;
+}
+
+/* ============ TABLES ============ */
+.data-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow-sm);margin-bottom:20px;}
+table.data-table{width:100%;border-collapse:collapse;min-width:560px;}
+table.data-table th{
+  text-align:left;font-family:'Baloo 2',sans-serif;font-size:13px;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--sky);font-weight:800;padding:14px 18px;border-bottom:1px solid var(--border-hi);white-space:nowrap;
+}
+table.data-table td{padding:14px 18px;font-size:14px;color:var(--ink-dim);font-weight:600;border-bottom:1px solid var(--border);line-height:1.5;}
+table.data-table tr:last-child td{border-bottom:none;}
+table.data-table tr:hover td{background:rgba(255,255,255,0.03);color:var(--ink);}
+table.data-table td.sev-warn{color:var(--gold);font-weight:800;}
+table.data-table td.sev-ban{color:#ff6b7a;font-weight:800;}
+table.data-table td.sev-none{opacity:.45;}
+
+/* ============ SECTION TITLE ============ */
+.section-title{text-align:center;margin:70px 0 32px;}
+.section-title h2{font-size:32px;color:var(--ink);}
+.section-title .accent{background:linear-gradient(90deg,var(--sky),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.section-title p{color:var(--ink-dim);font-size:13.5px;margin-top:6px;font-weight:700;text-transform:uppercase;letter-spacing:1px;}
+
+/* ============ REGION GRID (colored squares) ============ */
+.nation-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;padding-bottom:60px;}
+.nation-card{
+  --rc: var(--sky);
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px 20px;cursor:pointer;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
+  transition:transform .4s var(--ease), box-shadow .4s var(--ease), border-color .4s, background .4s;
+}
+.nation-card::before{content:"";position:absolute;top:0;left:0;width:100%;height:4px;background:var(--rc);box-shadow:0 0 12px var(--rc);}
+.nation-card::after{content:"";position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--rc) 30%, transparent), transparent 70%);transition:opacity .4s;}
+.nation-card:hover{transform:translateY(-8px);border-color:var(--rc);box-shadow:var(--shadow-md);background:var(--panel-hover);}
+.nation-card:hover::after{opacity:1;}
+.nation-card .emblem{font-size:36px;display:block;margin-bottom:10px;filter:drop-shadow(0 0 8px var(--rc));}
+.nation-card h4{font-size:20px;color:var(--ink);margin-bottom:6px;}
+.nation-card p{font-size:13.5px;color:var(--ink-dim);line-height:1.5;font-weight:600;position:relative;}
+.nation-card .count-pill{margin-top:10px;display:inline-flex;gap:6px;align-items:center;font-size:12px;font-weight:800;color:var(--rc);background:color-mix(in srgb, var(--rc) 14%, transparent);border:1px solid color-mix(in srgb, var(--rc) 40%, transparent);border-radius:20px;padding:4px 12px;position:relative;}
+.nation-card .fill-bar{position:relative;margin-top:10px;height:5px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden;}
+.nation-card .fill-bar i{display:block;height:100%;background:var(--rc);border-radius:4px;}
+
+/* ============ BREADCRUMBS ============ */
+.breadcrumbs{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-dim);font-weight:700;margin-bottom:18px;flex-wrap:wrap;}
+.breadcrumbs a{color:var(--ink-dim);text-decoration:none;cursor:pointer;transition:color .25s;}
+.breadcrumbs a:hover{color:var(--sky);}
+.breadcrumbs .sep{opacity:.4;}
+.breadcrumbs .current{color:var(--sky);}
+
+/* ============ REGION DETAIL ============ */
+.back-btn{display:inline-flex;align-items:center;gap:8px;color:var(--ink-dim);text-decoration:none;font-weight:800;cursor:pointer;font-size:14px;margin-bottom:6px;transition:color .3s;}
+.back-btn:hover{color:var(--sky);}
+
+.nation-hero{
+  --rc: var(--sky);
+  display:flex;align-items:center;gap:24px;background:var(--panel);border:1px solid var(--border);
+  border-radius:var(--radius);padding:30px;box-shadow:var(--shadow-sm);margin-bottom:22px;position:relative;overflow:hidden;
+}
+.nation-hero::before{content:"";position:absolute;top:0;left:0;width:5px;height:100%;background:var(--rc);}
+.nation-hero .big-emblem{font-size:64px;filter:drop-shadow(0 0 16px var(--rc));}
+.nation-hero h2{font-size:34px;color:var(--ink);}
+.nation-hero p{color:var(--ink-dim);margin-top:6px;font-weight:600;}
+
+.region-stats{display:flex;gap:24px;flex-wrap:wrap;align-items:center;margin-bottom:22px;}
+.region-stats .rs-item{font-size:13.5px;font-weight:700;color:var(--ink-dim);}
+.region-stats .rs-item b{color:var(--ink);}
+.region-fillbar{flex:1;min-width:180px;height:8px;border-radius:5px;background:rgba(255,255,255,0.08);overflow:hidden;}
+.region-fillbar i{display:block;height:100%;background:linear-gradient(90deg,var(--free),var(--sky));border-radius:5px;transition:width .6s var(--ease);}
+
+.roles-toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.legend{display:flex;gap:20px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--ink-dim);}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
+.dot.taken{background:var(--taken);}
+.dot.free{background:var(--free);box-shadow:0 0 8px rgba(56,224,166,0.6);}
+.dot.owner{background:var(--owner);box-shadow:0 0 8px var(--owner);}
+.char-search{
+  display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);
+  border-radius:12px;padding:9px 14px;
+}
+.char-search input{background:transparent;border:none;outline:none;color:var(--ink);font-family:'Nunito',sans-serif;font-size:14px;width:180px;}
+.char-search input::placeholder{color:var(--ink-dim);}
+
+.char-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;padding-bottom:60px;}
+.char-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px 16px;
+  display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-sm);
+  transition:transform .25s var(--ease), box-shadow .25s, border-color .25s;position:relative;
+}
+.char-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:var(--border-hi);}
+.char-card.is-taken{background:rgba(255,255,255,0.02);}
+.char-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.char-name{font-weight:700;font-size:14.5px;color:var(--ink);}
+.char-status{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--ink-dim);white-space:nowrap;}
+.char-hover-info{
+  max-height:0;overflow:hidden;transition:max-height .3s var(--ease), opacity .3s;opacity:0;
+  font-size:12px;color:var(--sky);font-weight:700;
+}
+.char-card:hover .char-hover-info{max-height:40px;opacity:1;}
+.char-book-btn{
+  margin-top:2px;align-self:flex-start;font-size:11.5px;font-weight:800;color:var(--bg-deep);
+  background:linear-gradient(135deg,var(--free),var(--sky));border:none;border-radius:14px;
+  padding:5px 12px;cursor:pointer;opacity:0;max-height:0;overflow:hidden;transition:opacity .25s, max-height .25s;
+}
+.char-card:hover .char-book-btn{opacity:1;max-height:30px;}
+
+/* ============ ADMIN PAGE ============ */
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;padding-bottom:70px;}
+.admin-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-sm);transition:transform .35s var(--ease), box-shadow .35s, border-color .35s;}
+.admin-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-md);border-color:var(--border-hi);}
+.admin-role{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.admin-role .heart{font-size:20px;filter:drop-shadow(0 0 6px rgba(79,216,255,0.4));}
+.admin-role h4{font-size:19px;color:var(--ink);}
+.admin-name{color:var(--sky);font-weight:800;font-size:14.5px;margin-bottom:8px;}
+.admin-name a{color:inherit;text-decoration:none;}
+.admin-name a:hover{text-decoration:underline;}
+.admin-desc{font-size:14px;color:var(--ink-dim);line-height:1.55;font-weight:600;}
+
+/* ============ PANEL ============ */
+.panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding-bottom:20px;}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow-sm);}
+.panel h3{font-size:22px;color:var(--ink);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.panel ul{list-style:none;display:flex;flex-direction:column;gap:12px;}
+.panel ul li{display:flex;gap:10px;font-size:14.5px;color:var(--ink-dim);line-height:1.55;font-weight:600;}
+.panel ul li .bullet{color:var(--sky);font-weight:900;flex-shrink:0;}
+.panel .warn-box{margin-top:16px;background:rgba(79,216,255,0.08);border:1px dashed rgba(79,216,255,0.35);border-radius:14px;padding:14px 16px;font-size:13.5px;color:var(--sky);font-weight:700;line-height:1.5;}
+.countdown-box{
+  margin-top:18px;background:rgba(157,140,249,0.09);border:1px solid rgba(157,140,249,0.3);
+  border-radius:14px;padding:16px;text-align:center;
+}
+.countdown-label{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--violet);font-weight:800;margin-bottom:8px;}
+.countdown-timer{font-family:'Cinzel',serif;font-size:24px;color:var(--ink);letter-spacing:1px;}
+
+/* ============ RULES ACCORDION ============ */
+.rules-list{display:flex;flex-direction:column;gap:14px;padding-bottom:70px;}
+.rule-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow .3s, border-color .3s;}
+.rule-card.open{box-shadow:var(--shadow-md);border-color:var(--border-hi);}
+.rule-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 22px;cursor:pointer;}
+.rule-head-left{display:flex;align-items:center;gap:14px;}
+.rule-num{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--sky),var(--violet));color:#04121c;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:15px;}
+.rule-head h4{font-size:17.5px;color:var(--ink);}
+.rule-chevron{transition:transform .35s var(--ease);color:var(--sky);font-size:18px;}
+.rule-card.open .rule-chevron{transform:rotate(180deg);}
+.rule-body{max-height:0;overflow:hidden;transition:max-height .4s var(--ease);}
+.rule-card.open .rule-body{max-height:600px;}
+.rule-body-inner{padding:0 22px 22px 72px;font-size:14.5px;color:var(--ink-dim);line-height:1.65;font-weight:600;}
+.rule-body-inner b{color:var(--ink);}
+
+/* ============ BOOKING MODAL ============ */
+.modal-overlay{
+  position:fixed;inset:0;z-index:1500;background:rgba(4,6,13,0.72);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.modal-overlay.show{display:flex;animation:fadeIn .3s var(--ease);}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.modal-box{
+  background:var(--bg-mid);border:1px solid var(--border-hi);border-radius:var(--radius);
+  max-width:460px;width:100%;padding:28px;box-shadow:var(--shadow-md);position:relative;
+  animation:modalPop .35s var(--ease);
+}
+@keyframes modalPop{from{opacity:0;transform:translateY(16px) scale(0.97);}to{opacity:1;transform:translateY(0) scale(1);}}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--ink-dim);font-size:20px;cursor:pointer;transition:color .2s;}
+.modal-close:hover{color:var(--sky);}
+.modal-box h3{font-size:21px;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.modal-sub{font-size:13.5px;color:var(--ink-dim);font-weight:600;margin-bottom:18px;}
+.modal-textbox{
+  background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:14px;
+  padding:16px;font-size:14px;color:var(--ink);line-height:1.7;font-weight:600;white-space:pre-line;margin-bottom:16px;
+}
+.modal-textbox .fillme{color:var(--sky);font-weight:800;}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.copy-feedback{font-size:12.5px;color:var(--free);font-weight:800;margin-top:10px;opacity:0;transition:opacity .3s;}
+.copy-feedback.show{opacity:1;}
+
+/* ============ FOOTER (RFL-style) ============ */
+footer{border-top:1px solid var(--border);padding:56px 5% 0;background:rgba(10,14,30,0.7);}
+.footer-grid{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:30px;padding-bottom:36px;}
+.footer-col h4{color:var(--gold);font-size:12.5px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px;font-weight:800;}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:10px;}
+.footer-col ul li a{color:var(--ink-dim);text-decoration:none;font-size:14px;font-weight:700;transition:color .25s;cursor:pointer;}
+.footer-col ul li a:hover{color:var(--sky);}
+.footer-col ul li .role-tag{display:block;font-size:11.5px;color:var(--ink-dim);opacity:.7;font-weight:600;margin-top:1px;}
+footer .foot-brand{font-family:'Cinzel',serif;font-size:21px;letter-spacing:1px;margin-bottom:10px;background:linear-gradient(90deg,var(--sky),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.footer-desc{font-size:13.5px;line-height:1.6;color:var(--ink-dim);max-width:270px;margin-bottom:16px;font-weight:600;}
+.footer-socials{display:flex;gap:10px;}
+.footer-socials a{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--border);color:var(--ink-dim);text-decoration:none;font-size:16px;transition:transform .3s var(--ease), border-color .3s, color .3s;}
+.footer-socials a:hover{transform:translateY(-3px);border-color:var(--sky);color:var(--sky);box-shadow:var(--glow);}
+.footer-bottom{border-top:1px solid var(--border);padding:20px 0 26px;text-align:center;font-size:12.5px;letter-spacing:0.3px;color:var(--ink-dim);font-weight:700;}
+.footer-bottom .eyes{font-size:15px;margin-left:6px;}
+
+/* ============ BACK TO TOP ============ */
+#back-to-top{position:fixed;bottom:26px;right:26px;z-index:400;width:46px;height:46px;border-radius:50%;background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow-sm);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .4s, transform .3s var(--ease), box-shadow .3s, border-color .3s;}
+#back-to-top.show{opacity:1;pointer-events:auto;}
+#back-to-top:hover{transform:translateY(-4px);box-shadow:var(--glow);border-color:var(--sky);}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width:900px){
+  nav ul{display:none;}
+  .burger{display:flex;}
+  nav.mobile-open ul{display:flex;flex-direction:column;position:fixed;top:70px;right:5%;background:var(--bg-mid);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:var(--shadow-md);gap:4px;z-index:600;}
+  .panel-grid{grid-template-columns:1fr;}
+  .info-strip{grid-template-columns:repeat(2,1fr);}
+  .footer-grid{grid-template-columns:1fr 1fr;}
+}
+@media (max-width:520px){
+  .nation-hero{flex-direction:column;text-align:center;}
+  .rule-body-inner{padding-left:22px;}
+  .footer-grid{grid-template-columns:1fr;}
+  .tg-btn span.tg-label{display:none;}
+}
+</style>
+</head>
+<body>
+
+<div id="glide-layer"></div>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="load-ring-wrap">
+    <svg class="load-ring-svg" width="130" height="130" viewBox="0 0 130 130">
+      <defs>
+        <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#4fd8ff"/>
+          <stop offset="100%" stop-color="#9d8cf9"/>
+        </linearGradient>
+      </defs>
+      <circle class="load-ring-bg" cx="65" cy="65" r="60"></circle>
+      <circle class="load-ring-fg" id="load-ring-fg" cx="65" cy="65" r="60"></circle>
+    </svg>
+    <div class="load-core">✦</div>
+    <div class="load-pct" id="load-pct">0%</div>
+  </div>
+  <div class="load-text" id="load-text">Пробуждение Эфира</div>
+</div>
+
+<!-- HEADER -->
+<header id="site-header">
+  <div class="nav-brand" onclick="goHome()">
+    <div class="logo-slot">✦</div>
+    <div class="nav-title">Ethereal Flood</div>
+  </div>
+  <nav id="main-nav">
+    <ul id="nav-list">
+      <li><a onclick="goHome()" data-page="page-home">Главная</a></li>
+      <li><a onclick="showPage('page-roles')" data-page="page-roles">Роли</a></li>
+      <li><a onclick="showPage('page-favorites')" data-page="page-favorites">Избранное ⭐</a></li>
+      <li><a onclick="showPage('page-admin')" data-page="page-admin">Администрация</a></li>
+      <li><a onclick="showPage('page-rest')" data-page="page-rest">Рест и Чистка</a></li>
+      <li><a onclick="showPage('page-rules')" data-page="page-rules">Правила</a></li>
+    </ul>
+  </nav>
+  <div class="header-right">
+    <a class="tg-btn" href="https://t.me/Etherealfloodds" target="_blank" rel="noopener" onclick="playClick()">✈️ <span class="tg-label">Инфо в Telegram</span></a>
+    <div class="theme-toggle" id="theme-toggle" title="Сменить тему" onclick="event.stopPropagation();toggleThemePopover()">
+      🎨
+      <div class="theme-popover" id="theme-popover">
+        <div class="theme-popover-title">Цветовая тема</div>
+        <div class="theme-swatch" data-theme="sky" style="background:linear-gradient(135deg,#4fd8ff,#9d8cf9);" onclick="event.stopPropagation();setTheme('sky')" title="Небо"></div>
+        <div class="theme-swatch" data-theme="emerald" style="background:linear-gradient(135deg,#3fd6a0,#e8c988);" onclick="event.stopPropagation();setTheme('emerald')" title="Ли Юэ"></div>
+        <div class="theme-swatch" data-theme="crimson" style="background:linear-gradient(135deg,#ff4f6d,#ffcf6d);" onclick="event.stopPropagation();setTheme('crimson')" title="Фатуи"></div>
+        <div class="theme-swatch" data-theme="electro" style="background:linear-gradient(135deg,#a06bff,#ffd166);" onclick="event.stopPropagation();setTheme('electro')" title="Инадзума"></div>
+        <div class="theme-swatch" data-theme="snow" style="background:linear-gradient(135deg,#6a8dff,#cbd5f0);" onclick="event.stopPropagation();setTheme('snow')" title="Снежная"></div>
+      </div>
+    </div>
+    <div class="burger" onclick="toggleMobileNav()"><span></span><span></span><span></span></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- HOME -->
+  <section class="page active" id="page-home">
+    <div class="hero">
+      <div class="hero-badge reveal">🌙 Genshin Impact · Roleplay флуд</div>
+      <h1 class="reveal brand-font">Ethereal Flood</h1>
+      <p class="tagline reveal">Уютный флудочат по Genshin Impact — берите роль любимого персонажа, общайтесь, придумывайте истории и находите новых друзей среди путешественников Тейвата.</p>
+      <div class="hero-actions reveal">
+        <button class="btn btn-primary" onclick="playClick();showPage('page-roles')">🎭 Выбрать роль</button>
+        <button class="btn btn-ghost" onclick="playClick();showPage('page-rules')">📜 Правила чата</button>
+        <button class="btn btn-outline" onclick="playChime();randomRegion()">🎲 Случайный регион</button>
+      </div>
+      <div class="info-strip reveal">
+        <div class="info-card"><div class="info-num">10</div><div class="info-label">Регионов</div></div>
+        <div class="info-card"><div class="info-num">180+</div><div class="info-label">Персонажей</div></div>
+        <div class="info-card"><div class="info-num">5</div><div class="info-label">Ролей в админ.</div></div>
+        <div class="info-card"><div class="info-num">Вс</div><div class="info-label">День чистки</div></div>
+      </div>
+
+      <div class="visits-badge reveal">👀 Просмотров сайта: <span class="v-num" id="visits-count">0</span></div>
+
+      <div class="announce-bar reveal">
+        <span class="a-icon">📢</span>
+        <span class="a-text"><b>Объявление:</b> набор во флуд открыт! Загляните в раздел «Роли», чтобы выбрать свободного персонажа, или напишите владельцу в Telegram для брони.</span>
+      </div>
+
+      <div class="cotd reveal" id="cotd-box">
+        <div class="cotd-label">✨ Свободная роль дня</div>
+        <div class="cotd-name" id="cotd-name">—</div>
+        <div class="cotd-region" id="cotd-region">—</div>
+        <button class="btn btn-primary btn-sm" id="cotd-btn" onclick="playChime();openBooking(cotdChar.n, cotdChar.regionName)">📌 Забронировать</button>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="section-title">
+        <h2>Регионы <span class="accent">Тейвата</span></h2>
+        <p>Выбери регион, чтобы увидеть занятые и свободные роли</p>
+      </div>
+      <div class="nation-grid" id="nation-grid-home"></div>
+
+      <div class="section-title">
+        <h2>🔥 Топ-5 <span class="accent">популярных ролей</span></h2>
+        <p>По количеству просмотров карточки персонажа</p>
+      </div>
+      <div class="top-roles-grid" id="top-roles-grid"></div>
+    </div>
+  </section>
+
+  <!-- ROLES -->
+  <section class="page" id="page-roles">
+    <div class="container">
+      <div class="section-title">
+        <h2>Список <span class="accent">ролей</span></h2>
+        <p>🩶 занята · нет метки — свободна</p>
+      </div>
+      <div class="nation-grid" id="nation-grid-roles"></div>
+    </div>
+  </section>
+
+  <!-- FAVORITES -->
+  <section class="page" id="page-favorites">
+    <div class="container">
+      <div class="section-title">
+        <h2>⭐ Мои <span class="accent">избранные роли</span></h2>
+        <p>Персонажи, отмеченные звёздочкой во всех регионах</p>
+      </div>
+      <div class="char-grid" id="fav-grid"></div>
+    </div>
+  </section>
+
+  <!-- REGION DETAIL -->
+  <section class="page" id="page-nation">
+    <div class="container">
+      <div class="breadcrumbs">
+        <a onclick="playClick();goHome()">Главная</a><span class="sep">→</span>
+        <a onclick="playClick();showPage('page-roles')">Роли</a><span class="sep">→</span>
+        <span class="current" id="crumb-region">Регион</span>
+      </div>
+      <a class="back-btn" onclick="playClick();showPage('page-roles')">← Ко всем регионам</a>
+
+      <div class="nation-hero" id="nation-hero-box">
+        <div class="big-emblem" id="n-emblem"></div>
+        <div>
+          <h2 id="n-name"></h2>
+          <p id="n-desc"></p>
+        </div>
+      </div>
+
+      <div class="region-stats">
+        <span class="rs-item">🎭 Всего: <b id="rs-total">0</b></span>
+        <span class="rs-item">🩶 Занято: <b id="rs-taken">0</b></span>
+        <span class="rs-item">✅ Свободно: <b id="rs-free">0</b></span>
+        <div class="region-fillbar"><i id="rs-fillbar" style="width:0%"></i></div>
+      </div>
+
+      <div class="roles-toolbar">
+        <div class="legend">
+          <div class="legend-item"><span class="dot free"></span> Свободна</div>
+          <div class="legend-item"><span class="dot taken"></span> Занята 🩶</div>
+        </div>
+        <div class="char-search">
+          <span>🔍</span>
+          <input type="text" id="char-search-input" placeholder="Найти персонажа...">
+        </div>
+      </div>
+
+      <div class="char-grid" id="char-grid"></div>
+    </div>
+  </section>
+
+  <!-- ADMIN -->
+  <section class="page" id="page-admin">
+    <div class="container">
+      <div class="section-title">
+        <h2>Наша <span class="accent">Администрация</span></h2>
+        <p>Кто следит за порядком в Ethereal Flood</p>
+      </div>
+      <div class="admin-grid">
+        <div class="admin-card">
+          <div class="admin-role"><span class="heart">❤️</span><h4>Владелец</h4></div>
+          <div class="admin-name"><a href="https://t.me/kenxins3" target="_blank" rel="noopener">@kenxins3</a> (Алёша 🐺🐺)</div>
+          <div class="admin-desc">Основатель и хранитель чата. Последнее слово всегда за владельцем.</div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-role"><span class="heart">❤️</span><h4>Совладелец</h4></div>
+          <div class="admin-name">— свободно —</div>
+          <div class="admin-desc">Совладелец помогает владельцу, решает с ним проблемы и важные вопросы.</div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-role"><span class="heart">❤️</span><h4>Старший админ</h4></div>
+          <div class="admin-name">— свободно —</div>
+          <div class="admin-desc">Следит за порядком, может выдавать варны, помогает с идеями для интерактива и активностей, по возможности делает видео.</div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-role"><span class="heart">❤️</span><h4>Младший админ</h4></div>
+          <div class="admin-name">— свободно —</div>
+          <div class="admin-desc">Следит за порядком в чате, решает проблемы и разногласия между участниками, проводит игры и активити.</div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-role"><span class="heart">❤️</span><h4>Монтажёр (1/2)</h4></div>
+          <div class="admin-name"><a href="https://t.me/kenxins3" target="_blank" rel="noopener">@kenxins3</a> (Алёша 🐺)</div>
+          <div class="admin-desc">Делает видео по возможности. Всегда открыт к предложениям и идеям для видео.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REST & CLEANING -->
+  <section class="page" id="page-rest">
+    <div class="container">
+      <div class="section-title">
+        <h2>Рест <span class="accent">и</span> Чистка</h2>
+        <p>Правила отдыха от чата и еженедельной проверки активности</p>
+      </div>
+      <div class="panel-grid">
+        <div class="panel">
+          <h3>🌙 Рест</h3>
+          <ul>
+            <li><span class="bullet">•</span> Рест нельзя взять в день чистки и на следующий день после неё — без уважительной причины.</li>
+            <li><span class="bullet">•</span> Максимальное время реста — <b>2 недели</b>, а при серьёзной причине — <b>месяц</b>.</li>
+            <li><span class="bullet">•</span> Минимальное время реста — <b>7 дней</b> (неделя).</li>
+          </ul>
+          <div class="warn-box">⚠️ Рест в день чистки или сразу после без уважительной причины не засчитывается.</div>
+        </div>
+        <div class="panel">
+          <h3>🧹 Чистка</h3>
+          <ul>
+            <li><span class="bullet">•</span> Проводится каждое <b>воскресенье</b> с <b>20:00 до 23:00 по МСК</b>.</li>
+            <li><span class="bullet">•</span> Норма — <b>70 сообщений</b>.</li>
+            <li><span class="bullet">•</span> Новички, состоящие во флуде меньше 7 дней, на чистке не проверяются — нужно время набрать норму.</li>
+            <li><span class="bullet">•</span> Меньше 60 сообщений — <b>бан</b>.</li>
+            <li><span class="bullet">•</span> Меньше 70, но близко к норме (например 65) — <b>варн на неделю</b>.</li>
+          </ul>
+          <div class="warn-box">🎁 На время чистки чат закрывается — не пугайтесь, это нормально.</div>
+          <div class="countdown-box">
+            <div class="countdown-label">⏳ До следующей чистки</div>
+            <div class="countdown-timer" id="countdown-timer">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RULES -->
+  <section class="page" id="page-rules">
+    <div class="container">
+      <div class="section-title">
+        <h2>Правила <span class="accent">чата</span></h2>
+        <p>Флуд — это место для общения, а не для хаоса</p>
+      </div>
+      <div class="rules-list" id="rules-list"></div>
+
+      <div class="section-title">
+        <h2>🚨 Таблица <span class="accent">наказаний</span></h2>
+        <p>Что будет за нарушение и на каком разе</p>
+      </div>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Нарушение</th><th>1-й раз</th><th>2-й раз</th><th>3-й раз</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Спам</td><td class="sev-none">Устное замечание</td><td class="sev-warn">Варн</td><td class="sev-ban">Бан</td></tr>
+            <tr><td>Конфликты, оскорбления, провокации, троллинг</td><td class="sev-none">Устное замечание</td><td class="sev-warn">Варн</td><td class="sev-ban">Бан</td></tr>
+            <tr><td>Злые шутки, обидевшие участника</td><td class="sev-warn">Варн</td><td class="sev-ban">Бан</td><td class="sev-ban">—</td></tr>
+            <tr><td>Политика / религия (чрезмерно)</td><td class="sev-warn">Варн</td><td class="sev-ban">Бан</td><td class="sev-ban">—</td></tr>
+            <tr><td>Расизм</td><td class="sev-ban">Бан сразу</td><td class="sev-ban">—</td><td class="sev-ban">—</td></tr>
+            <tr><td>18+ контент (самоповреждение, обнажёнка и т.д.)</td><td class="sev-ban">Бан без возврата</td><td class="sev-ban">—</td><td class="sev-ban">—</td></tr>
+            <tr><td>Обсуждение 18+ тем без явного контента</td><td class="sev-warn">Варн</td><td class="sev-ban">Бан</td><td class="sev-ban">—</td></tr>
+            <tr><td>Реклама без разрешения владельца</td><td class="sev-warn">Варн</td><td class="sev-ban">Бан</td><td class="sev-ban">—</td></tr>
+            <tr><td>Пропуск чистки (&lt;60 сообщений)</td><td class="sev-ban">Бан</td><td class="sev-ban">—</td><td class="sev-ban">—</td></tr>
+            <tr><td>Близко к норме чистки (~65 сообщ.)</td><td class="sev-warn">Варн на неделю</td><td class="sev-ban">Бан</td><td class="sev-ban">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="footer-grid">
+    <div class="footer-col">
+      <div class="foot-brand brand-font">Ethereal Flood</div>
+      <p class="footer-desc">Roleplay-флудочат по Genshin Impact. Общайся, играй роль, будь частью Тейвата вместе с другими путешественниками.</p>
+      <div class="footer-socials">
+        <a href="https://t.me/Etherealfloodds" target="_blank" rel="noopener" title="Telegram — инфо">✈️</a>
+      </div>
+    </div>
+
+    <div class="footer-col">
+      <h4>Сообщество</h4>
+      <ul>
+        <li><a href="https://t.me/Etherealfloodds" target="_blank" rel="noopener">Инфо в Telegram</a></li>
+        <li><a onclick="showPage('page-rules')">Правила чата</a></li>
+        <li><a onclick="showPage('page-rest')">Рест и Чистка</a></li>
+        <li><a onclick="showPage('page-roles')">Список ролей</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h4>Администрация</h4>
+      <ul>
+        <li><a href="https://t.me/kenxins3" target="_blank" rel="noopener">@kenxins3<span class="role-tag">Владелец</span></a></li>
+        <li><a href="https://t.me/kenxins3" target="_blank" rel="noopener">@kenxins3<span class="role-tag">Монтажёр</span></a></li>
+        <li><span class="role-tag" style="opacity:1;">Совладелец — свободно</span></li>
+        <li><span class="role-tag" style="opacity:1;">Ст./Мл. админ — свободно</span></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h4>Регионы</h4>
+      <ul id="footer-regions"></ul>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    © 2026 Ethereal Flood · сделано с любовью и капелькой хаоса <span class="eyes" onclick="showEyeJoke()">👀<span class="eye-joke" id="eye-joke"></span></span>
+  </div>
+</footer>
+
+<div id="back-to-top">↑</div>
+
+<!-- BOTTOM MUSIC PLAYER -->
+<div id="music-bar">
+  <div class="mb-track">
+    <div class="mb-thumb">🎧</div>
+    <div class="mb-meta">
+      <div class="mb-name" id="mb-name">—</div>
+      <div class="mb-time" id="mb-time">0:00 / 0:00</div>
+    </div>
+  </div>
+  <div class="mb-controls">
+    <div class="mb-btn" title="Предыдущий" onclick="prevTrack()">⏮</div>
+    <div class="mb-btn play" id="mb-play-btn" title="Играть/Пауза" onclick="togglePlay()">▶</div>
+    <div class="mb-btn" title="Следующий" onclick="nextTrack()">⏭</div>
+  </div>
+  <div class="mb-progress-wrap">
+    <div class="mb-progress" id="mb-progress" onclick="seekTrack(event)">
+      <i id="mb-progress-fill"></i>
+      <div class="mb-knob" id="mb-progress-knob"></div>
+    </div>
+  </div>
+  <div class="mb-list-btn" id="mb-list-btn" title="Плейлист" onclick="event.stopPropagation();togglePlaylist()">☰</div>
+  <audio id="bgm-audio" preload="none"></audio>
+</div>
+<div id="playlist-panel">
+  <div class="pl-title">Плейлист</div>
+  <div id="playlist-items"></div>
+</div>
+
+<!-- BOOKING MODAL -->
+<div class="modal-overlay" id="booking-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeBooking()">✕</button>
+    <h3>📌 Бронирование роли</h3>
+    <div class="modal-sub">Скопируйте текст ниже, вставьте свой юзернейм и отправьте владельцу в Telegram.</div>
+    <div class="modal-textbox" id="modal-textbox">Здравствуйте! Хочу забронировать / забрать роль.
+Мой юзернейм: <span class="fillme">@ваш_юзернейм</span>
+Роль: <span class="fillme" id="modal-role-name">—</span></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary btn-sm" onclick="copyBookingText()">📋 Скопировать текст</button>
+      <a class="btn btn-ghost btn-sm" href="https://t.me/kenxins3" target="_blank" rel="noopener" onclick="playChime()">✈️ Написать владельцу</a>
+    </div>
+    <div class="copy-feedback" id="copy-feedback">Скопировано! Вставьте текст в чат с владельцем ✔</div>
+  </div>
+</div>
+
+<script>
+/* ==================================================================
+   DATA — region "color" sets the accent tint for that region's cards.
+   Characters marked taken:true show a 🩶 status; add user/id to show
+   a username + ID tooltip on hover (fill in real data as roles fill up).
+================================================================== */
+const NATIONS = [
+  { code:"mond", emblem:"🍃", name:"Мондштадт", color:"#7ed957",
+    desc:"Город свободы, ветра и вина — родина бардов и рыцарей.",
+    chars:[
+      {n:"Альбедо",taken:true,user:"@albedo_rp",id:"512004871"},{n:"Далия"},{n:"Барбара"},{n:"Беннет"},{n:"Венти"},
+      {n:"Джинн"},{n:"Дилюк"},{n:"Диона"},{n:"Кли"},{n:"Кэйа"},{n:"Лиза"},{n:"Мона"},
+      {n:"Ноэлль"},{n:"Розария"},{n:"Рейзор"},{n:"Сахароза"},{n:"Фишль"},{n:"Эмбер"},
+      {n:"Мика"},{n:"Эола"},{n:"Лоэн"}
+    ]},
+  { code:"liyue", emblem:"⛰️", name:"Ли Юэ", color:"#e8c988",
+    desc:"Контракты, традиции и адепты — древняя земля скал и золота.",
+    chars:[
+      {n:"Бай Чжу"},{n:"Цзы Бай"},{n:"Чжун Ли"},{n:"Бей Доу"},{n:"Гань Юй"},{n:"Е Лань"},
+      {n:"Кэ Цин"},{n:"Ка Мин"},{n:"Нин Гуан"},{n:"Син Цю"},{n:"Синь Янь"},{n:"Лань Янь"},
+      {n:"Сян Лин"},{n:"Сяо",taken:true,user:"@xiao_teyvat",id:"398217640"},{n:"Сянь Юнь"},{n:"Ху Тао"},{n:"Чун Юнь"},
+      {n:"Шень Хэ",taken:true,user:"@shenhe_rp",id:"674110238"},{n:"Ци Ци"},{n:"Юнь Цзинь"},{n:"Янь Фей"},{n:"Яо Яо"},{n:"Гуй Чжун"}
+    ]},
+  { code:"inazuma", emblem:"⚡", name:"Инадзума", color:"#a06bff",
+    desc:"Вечная гроза и вечность — острова под властью электро archon.",
+    chars:[
+      {n:"Райдэн Эи"},{n:"Яэ Мико"},{n:"Сара"},{n:"Аято"},{n:"Аяка"},{n:"Итто"},
+      {n:"Куки"},{n:"Кокоми"},{n:"Горо"},{n:"Кадзуха"},{n:"Ёимия"},{n:"Саю"},
+      {n:"Хэйдзо"},{n:"Странник"},{n:"Кирара"},{n:"Тома"},{n:"Мидзуки"}
+    ]},
+  { code:"sumeru", emblem:"🌿", name:"Сумеру", color:"#3fd6a0",
+    desc:"Академия и пустыня — страна мудрости и снов.",
+    chars:[
+      {n:"Нахида"},{n:"Тигнари"},{n:"Коллеи"},{n:"Сайно"},{n:"Дехья"},{n:"Дори"},
+      {n:"Нилу"},{n:"Лайла"},{n:"Кандакия"},{n:"Аль-Хайтам"},{n:"Кавех"},{n:"Сетос"},{n:"Фарузан"}
+    ]},
+  { code:"fontaine", emblem:"💧", name:"Фонтейн", color:"#4fd8ff",
+    desc:"Город правосудия и воды — механизмы, суды и оперы.",
+    chars:[
+      {n:"Лини",taken:true,user:"@lynney_rp",id:"205871943"},{n:"Линетт"},{n:"Шарлотта"},{n:"Фремине"},
+      {n:"Нёвиллет",taken:true,user:"@neuvillette_",id:"883120765"},{n:"Ризли"},{n:"Фурина"},{n:"Фокалорс"},{n:"Сиджвин"},
+      {n:"Навия"},{n:"Клоринда"},{n:"Эмилия"},{n:"Тиори"},{n:"Шеврёз"},{n:"Эскофье"}
+    ]},
+  { code:"natlan", emblem:"🔥", name:"Натлан", color:"#ff7a45",
+    desc:"Земля огня и войны — племена под пылающим небом.",
+    chars:[
+      {n:"Мавуика"},{n:"Иансан"},{n:"Муалани"},{n:"Качина"},{n:"Кинич"},
+      {n:"Оророн"},{n:"Ситлали"},{n:"Шилонен"},{n:"Вареса"},{n:"Ифа"},{n:"Часка"}
+    ]},
+  { code:"fatui", emblem:"🎭", name:"Фатуи", color:"#ff4f6d",
+    desc:"Тайная организация Царицы — арлекины и гарлеквины.",
+    chars:[
+      {n:"Пьеро"},{n:"Коломбина"},{n:"Пульчинела"},{n:"Синьора"},{n:"Панталоне"},
+      {n:"Тарталья",taken:true,user:"@childe_tartaglia",id:"441098762"},{n:"Арлекино"},{n:"Дотторе"},{n:"Капитано"},
+      {n:"Сандроне",taken:true,user:"@sandrone_rp",id:"770234581"},{n:"Царица"}
+    ]},
+  { code:"other", emblem:"✨", name:"Другое", color:"#cbd5f0",
+    desc:"Путешественники и другие герои вне регионов.",
+    chars:[
+      {n:"Люмин"},{n:"Дайнслейф"},{n:"Итэр"},{n:"Паймон"},{n:"Рэйндоттир"},{n:"Скирк"}
+    ]},
+  { code:"nod", emblem:"❄️", name:"Нод Край", color:"#7fe8ff",
+    desc:"Заснеженные земли за пределами известного Тейвата.",
+    chars:[
+      {n:"Айно"},{n:"Инеффа"},{n:"Лаума"},{n:"Николь"},{n:"Флинс"},{n:"Ягода"},
+      {n:"Алиса"},{n:"Нефер"},{n:"Рери"},{n:"Варка"},{n:"Дурин"},{n:"Иллуги"},{n:"Линнея"}
+    ]},
+  { code:"snezhnaya", emblem:"🌨️", name:"Снежная", color:"#6a8dff",
+    desc:"Ледяная родина Царицы и Фатуи.",
+    chars:[
+      {n:"Водяница"},{n:"Алёша",taken:true,owner:true,user:"@kenxins3",id:"100000001"},
+      {n:"Одетта",taken:true,user:"@odette_snow",id:"512873094"},
+      {n:"Валерий"},{n:"Весна"},{n:"Даника"},{n:"Ной"},{n:"Митя"},{n:"Царица"}
+    ]},
+];
+
+const RULES = [
+  { title:"Спам", body:`Спамом считаются <b>более 3 одинаковых сообщений</b>, написанных намеренно. Спамом также считается «исправление» сообщения по частям, например: «сегодн.. сегрдя.. сегоня.. блин.. сегодня». Если не получается написать с первого раза — исправьте прямо в сообщении, а не спамьте правками ниже. Бессмысленные сообщения без какого-либо смысла (просто набор слов, «бред») тоже считаются спамом.` },
+  { title:"Выход из флуда", body:`При выходе просим указывать <b>роль</b> и по возможности <b>причину</b>. В противном случае владелец имеет право написать вам в личные сообщения, чтобы уточнить роль.` },
+  { title:"Конфликты, споры, троллинг, оскорбления, провокации", body:`Всё перечисленное <b>запрещено</b>. Любая личная обида и ссора решается в личных сообщениях — в противном случае просим позвать администрацию, если видите разгорающийся конфликт. Флуд — это чат для общения, а не для хаоса. Просим не шутить злые шутки и заранее убедиться, что человеку они не будут обидны — иначе варн. Если не хотите успокаиваться — бан.` },
+  { title:"Политика, религия, расизм", body:`В меру. Флуд — не место для хаоса и ссор на почве политики и религии. Расизм запрещён полностью — допустимы только шутки в сторону персонажей, не более.` },
+  { title:"18+", body:`Запрещено в любом виде: самоповреждение, смерть, обнажённые фото, гифки, видео или стикеры. За любое нарушение — <b>бан без возможности вернуться</b>. Арты с элементами крови без самоповреждения — можно, но не более. Обсуждать подобные темы разрешается частично, но без подробностей про кровь, мясо и чьи-то интимные части (варн за обсуждение).` },
+  { title:"Реклама", body:`Реклама чего-либо запрещена без разрешения владельца. Можно говорить о любимых блогерах и советовать что-то к покупке, но нельзя предлагать «купите у меня что-то» — это карается варном. Это же касается и рекламы других флудов.` },
+];
+
+/* ================= WEB AUDIO (synthesized, no external files) ================= */
+let audioCtx = null;
+function ensureAudio(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playTone(freq, dur, type='sine', gainPeak=0.06, delay=0){
+  const ctx = ensureAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  const t0 = ctx.currentTime + delay;
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(gainPeak, t0 + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.05);
+}
+function playClick(){ playTone(720, 0.12, 'sine', 0.05); }
+function playChime(){ playTone(660,0.35,'sine',0.05); playTone(990,0.4,'sine',0.035,0.06); playTone(1320,0.45,'sine',0.02,0.12); }
+function playWhoosh(){ playTone(220, 0.25, 'triangle', 0.03); }
+function playPop(){
+  const ctx = ensureAudio();
+  const osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(560, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(1050, ctx.currentTime + 0.08);
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.14);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.16);
+}
+function playPopDown(){
+  const ctx = ensureAudio();
+  const osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(820, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(360, ctx.currentTime + 0.09);
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.17);
+}
+
+/* ================= EASTER EGG: EYES JOKE ================= */
+const EYE_JOKES = [
+  "Паймон опять хочет данго 🍡",
+  "Владелец тоже иногда спамит… тс-с 🤫",
+  "Ты нашёл пасхалку! Держи виртуальную морошку 🍬",
+  "Тут вообще-то Ли Юэ, а не Ли-юмор 😏",
+  "Кто-то забыл про рест — уже идут с варном 👀",
+  "Секретный код: просто продолжай флудить",
+  "Паймон считает это подозрительным 🧐"
+];
+function showEyeJoke(){
+  playPop();
+  const bubble = document.getElementById('eye-joke');
+  bubble.textContent = EYE_JOKES[Math.floor(Math.random()*EYE_JOKES.length)];
+  bubble.classList.add('show');
+  clearTimeout(window._eyeJokeTimer);
+  window._eyeJokeTimer = setTimeout(()=>bubble.classList.remove('show'), 2500);
+}
+
+/* ================= BOTTOM MUSIC PLAYER ================= */
+const TRACKS = [
+  { name:"Спокойный лоуфай — Трек 1", src:"bgm.mp3" },
+  { name:"Спокойный лоуфай — Трек 2", src:"bgm2.mp3" },
+];
+let currentTrack = 0;
+let isPlayingTrack = false;
+const bgmAudio = document.getElementById('bgm-audio');
+
+function formatTime(sec){
+  if(!isFinite(sec)) return "0:00";
+  const m = Math.floor(sec/60), s = Math.floor(sec%60);
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+function loadTrack(i, autoplay){
+  currentTrack = (i + TRACKS.length) % TRACKS.length;
+  const t = TRACKS[currentTrack];
+  bgmAudio.src = t.src;
+  document.getElementById('mb-name').textContent = t.name;
+  renderPlaylist();
+  if(autoplay) playCurrentTrack();
+}
+function playCurrentTrack(){
+  bgmAudio.volume = 0;
+  bgmAudio.play().then(()=>{
+    let v = 0;
+    const fadeIn = setInterval(()=>{
+      v = Math.min(0.5, v + 0.03);
+      bgmAudio.volume = v;
+      if(v >= 0.5) clearInterval(fadeIn);
+    }, 60);
+  }).catch(()=>{ /* needs user gesture */ });
+  isPlayingTrack = true;
+  document.getElementById('mb-play-btn').textContent = '⏸';
+}
+function pauseCurrentTrack(){
+  let v = bgmAudio.volume;
+  const fadeOut = setInterval(()=>{
+    v = Math.max(0, v - 0.05);
+    bgmAudio.volume = v;
+    if(v <= 0){ clearInterval(fadeOut); bgmAudio.pause(); }
+  }, 40);
+  isPlayingTrack = false;
+  document.getElementById('mb-play-btn').textContent = '▶';
+}
+function togglePlay(){
+  playClick();
+  if(!bgmAudio.src) loadTrack(0, false);
+  if(isPlayingTrack) pauseCurrentTrack();
+  else playCurrentTrack();
+}
+function nextTrack(){ playClick(); loadTrack(currentTrack + 1, isPlayingTrack); }
+function prevTrack(){ playClick(); loadTrack(currentTrack - 1, isPlayingTrack); }
+function seekTrack(e){
+  const bar = document.getElementById('mb-progress');
+  const rect = bar.getBoundingClientRect();
+  const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  if(isFinite(bgmAudio.duration)) bgmAudio.currentTime = pct * bgmAudio.duration;
+}
+bgmAudio.addEventListener('timeupdate', ()=>{
+  const pct = bgmAudio.duration ? (bgmAudio.currentTime / bgmAudio.duration) * 100 : 0;
+  document.getElementById('mb-progress-fill').style.width = pct + '%';
+  document.getElementById('mb-progress-knob').style.left = pct + '%';
+  document.getElementById('mb-time').textContent = `${formatTime(bgmAudio.currentTime)} / ${formatTime(bgmAudio.duration)}`;
+});
+bgmAudio.addEventListener('ended', ()=>{ loadTrack(currentTrack + 1, true); });
+function renderPlaylist(){
+  const wrap = document.getElementById('playlist-items');
+  wrap.innerHTML = TRACKS.map((t,i)=>`
+    <div class="pl-item ${i===currentTrack?'active':''}" onclick="playClick();loadTrack(${i}, true);">
+      <div class="pl-thumb">🎧</div>
+      <div class="pl-name">${t.name}</div>
+      ${i===currentTrack ? '<span class="pl-now">NOW</span>' : ''}
+    </div>`).join('');
+}
+function togglePlaylist(){
+  document.getElementById('playlist-panel').classList.toggle('show');
+  document.getElementById('mb-list-btn').classList.toggle('active');
+}
+document.addEventListener('click', (e)=>{
+  const panel = document.getElementById('playlist-panel');
+  if(panel.classList.contains('show') && !panel.contains(e.target) && e.target.id !== 'mb-list-btn'){
+    panel.classList.remove('show');
+    document.getElementById('mb-list-btn').classList.remove('active');
+  }
+});
+loadTrack(0, false);
+
+/* ================= CURSOR TRAIL ================= */
+document.addEventListener('mousemove', (e)=>{
+  const dot = document.createElement('div');
+  dot.className = 'trail-dot';
+  dot.style.left = e.clientX+'px'; dot.style.top = e.clientY+'px';
+  document.body.appendChild(dot);
+  requestAnimationFrame(()=>{
+    dot.style.transition = 'transform .6s ease-out, opacity .6s ease-out';
+    dot.style.transform = 'translate(-50%,-50%) scale(2.4)';
+    dot.style.opacity = '0';
+  });
+  setTimeout(()=>dot.remove(), 650);
+});
+
+/* ================= LOADING SEQUENCE ================= */
+const loadRing = document.getElementById('load-ring-fg');
+const loadPct = document.getElementById('load-pct');
+const CIRC = 377;
+let progress = 0;
+const loadMessages = ["Пробуждение Эфира","Настройка потоков Мора","Сбор осколков судьбы","Открытие врат Тейвата"];
+document.getElementById('load-text').textContent = loadMessages[0];
+const loadTimer = setInterval(()=>{
+  progress += Math.random()*9 + 3;
+  if(progress >= 100){ progress = 100; clearInterval(loadTimer); finishLoading(); }
+  loadRing.style.strokeDashoffset = CIRC - (CIRC * progress/100);
+  loadPct.textContent = Math.floor(progress) + '%';
+  const idx = Math.min(loadMessages.length-1, Math.floor(progress/26));
+  document.getElementById('load-text').textContent = loadMessages[idx];
+}, 220);
+function finishLoading(){
+  setTimeout(()=>{
+    document.querySelector('.load-ring-wrap').classList.add('finish');
+    document.getElementById('load-text').classList.add('finish');
+    setTimeout(()=>{
+      document.getElementById('loading-screen').classList.add('hide');
+      document.getElementById('site-header').classList.add('show');
+      document.body.classList.add('site-revealed');
+      renderCharOfDay();
+      seedRoleViewsIfEmpty();
+      renderTopRoles();
+      renderVisits();
+      renderFavGrid();
+    }, 500);
+  }, 350);
+}
+
+/* ================= AMBIENT PARTICLES ================= */
+const glideLayer = document.getElementById('glide-layer');
+for(let i=0;i<22;i++){
+  const m = document.createElement('div');
+  const size = Math.random()*10+4;
+  m.className = 'mote';
+  m.style.width = size+'px'; m.style.height = size+'px';
+  m.style.left = Math.random()*100+'%'; m.style.top = Math.random()*100+'%';
+  m.style.opacity = (Math.random()*0.5+0.15).toFixed(2);
+  m.style.animationDuration = (Math.random()*6+6)+'s';
+  m.style.animationDelay = (Math.random()*4)+'s';
+  glideLayer.appendChild(m);
+}
+
+/* ================= RENDER REGION GRIDS (colored squares) ================= */
+function regionStats(c){
+  const total = c.chars.length;
+  const taken = c.chars.filter(ch=>ch.taken).length;
+  const free = total - taken;
+  const pct = total ? Math.round((taken/total)*100) : 0;
+  return {total, taken, free, pct};
+}
+function nationCardHTML(c){
+  const s = regionStats(c);
+  return `
+    <div class="nation-card" style="--rc:${c.color}" onclick="playClick();openNation('${c.code}')">
+      <span class="emblem">${c.emblem}</span>
+      <h4>${c.name}</h4>
+      <p>${c.desc}</p>
+      <span class="count-pill">🎭 ${s.free} своб. / ${s.total}</span>
+      <div class="fill-bar"><i style="width:${s.pct}%"></i></div>
+    </div>`;
+}
+document.getElementById('nation-grid-home').innerHTML = NATIONS.map(nationCardHTML).join('');
+document.getElementById('nation-grid-roles').innerHTML = NATIONS.map(nationCardHTML).join('');
+
+/* ================= FOOTER REGIONS LIST ================= */
+document.getElementById('footer-regions').innerHTML = NATIONS.map(c=>
+  `<li><a onclick="playClick();openNation('${c.code}')">${c.emblem} ${c.name}</a></li>`
+).join('');
+
+/* ================= ANIMATED COUNTER ================= */
+function animateCount(el, target, duration=900){
+  if(!el) return;
+  const start = 0;
+  const startTime = performance.now();
+  function tick(now){
+    const p = Math.min(1, (now - startTime) / duration);
+    const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    const val = Math.round(start + (target - start) * eased);
+    el.textContent = val.toLocaleString('ru-RU');
+    if(p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ================= VISITS COUNTER (localStorage, per browser) ================= */
+function getVisits(){
+  try{ return parseInt(localStorage.getItem('ef_visits')||'0', 10); }catch(e){ return 0; }
+}
+function bumpVisits(){
+  try{
+    let v = getVisits() + 1;
+    localStorage.setItem('ef_visits', String(v));
+    return v;
+  }catch(e){ return getVisits() + 1; }
+}
+function renderVisits(){
+  const total = bumpVisits();
+  animateCount(document.getElementById('visits-count'), total, 1100);
+}
+
+/* ================= ROLE VIEW TRACKING (localStorage, per browser) ================= */
+function getRoleViews(){
+  try{ return JSON.parse(localStorage.getItem('ef_role_views')||'{}'); }catch(e){ return {}; }
+}
+function trackRoleView(name){
+  try{
+    const views = getRoleViews();
+    views[name] = (views[name]||0) + 1;
+    localStorage.setItem('ef_role_views', JSON.stringify(views));
+  }catch(e){ /* storage unavailable, ignore */ }
+  renderTopRoles();
+}
+// Demo seed so the "Топ-5" section isn't empty on first load.
+// Feel free to clear this by removing 'ef_role_views' from localStorage.
+function seedRoleViewsIfEmpty(){
+  const views = getRoleViews();
+  if(Object.keys(views).length > 0) return;
+  const seed = {"Фурина":41,"Ху Тао":37,"Чжун Ли":33,"Нахида":29,"Райдэн Эи":26,"Венти":24,"Аяка":21};
+  try{ localStorage.setItem('ef_role_views', JSON.stringify(seed)); }catch(e){}
+}
+function renderTopRoles(){
+  const grid = document.getElementById('top-roles-grid');
+  if(!grid) return;
+  const views = getRoleViews();
+  const nameToRegion = {};
+  NATIONS.forEach(c=>{ c.chars.forEach(ch=>{ nameToRegion[ch.n] = c; }); });
+  const top = Object.entries(views)
+    .filter(([name])=>nameToRegion[name])
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,5);
+  if(top.length === 0){
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--ink-dim);font-weight:700;">Пока никто не смотрел роли — станьте первым!</div>`;
+    return;
+  }
+  grid.innerHTML = top.map(([name, count], i)=>{
+    const region = nameToRegion[name];
+    return `
+      <div class="top-role-card" style="--rc:${region.color}" onclick="playClick();openNation('${region.code}')">
+        <div class="top-role-rank">${i+1}</div>
+        <div class="top-role-emblem">${region.emblem}</div>
+        <div class="top-role-name">${name}</div>
+        <div class="top-role-region">${region.name}</div>
+        <div class="top-role-views">👀 <span class="trv-num" data-target="${count}">0</span></div>
+      </div>`;
+  }).join('');
+  grid.querySelectorAll('.trv-num').forEach(el=>{
+    animateCount(el, parseInt(el.dataset.target,10), 900);
+  });
+}
+
+/* ================= CHARACTER OF THE DAY ================= */
+let cotdChar = null;
+function renderCharOfDay(){
+  const freePool = [];
+  NATIONS.forEach(c=>{
+    c.chars.forEach(ch=>{ if(!ch.taken) freePool.push({n:ch.n, regionName:c.name, regionCode:c.code}); });
+  });
+  if(freePool.length === 0) return;
+  const seedDay = new Date().toISOString().slice(0,10);
+  let seed = 0; for(let i=0;i<seedDay.length;i++) seed += seedDay.charCodeAt(i);
+  cotdChar = freePool[seed % freePool.length];
+  document.getElementById('cotd-name').textContent = cotdChar.n;
+  document.getElementById('cotd-region').textContent = cotdChar.regionName;
+}
+
+/* ================= ROUTER ================= */
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('#nav-list a').forEach(a=>a.classList.remove('active'));
+  const navLink = document.querySelector(`#nav-list a[data-page="${id}"]`);
+  if(navLink) navLink.classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+  closeMobileNav();
+}
+function goHome(){ playClick(); showPage('page-home'); }
+
+function openNation(code){
+  const c = NATIONS.find(x=>x.code===code);
+  if(!c) return;
+  document.getElementById('n-emblem').textContent = c.emblem;
+  document.getElementById('n-name').textContent = c.name;
+  document.getElementById('n-desc').textContent = c.desc;
+  document.getElementById('crumb-region').textContent = c.name;
+  document.getElementById('nation-hero-box').style.setProperty('--rc', c.color);
+
+  const s = regionStats(c);
+  document.getElementById('rs-total').textContent = s.total;
+  document.getElementById('rs-taken').textContent = s.taken;
+  document.getElementById('rs-free').textContent = s.free;
+  document.getElementById('rs-fillbar').style.width = (100 - s.pct) + '%';
+
+  document.getElementById('char-search-input').value = '';
+  window.currentRegion = c;
+  renderCharGrid(c, '');
+
+  showPage('page-nation');
+}
+
+function charCardHTML(ch, c){
+  const takenClass = ch.taken ? 'is-taken' : '';
+  const dotClass = ch.owner ? 'owner' : (ch.taken ? 'taken' : 'free');
+  const label = ch.owner ? 'Владелец 🩶' : (ch.taken ? 'Занята 🩶' : 'Свободна');
+  const hoverInfo = ch.taken && ch.user
+    ? `<div class="char-hover-info">${ch.user} · ID: ${ch.id||'—'}</div>`
+    : '';
+  const safeName = ch.n.replace(/'/g,"\\'");
+  const bookBtn = !ch.taken
+    ? `<button class="char-book-btn" onclick="event.stopPropagation();playChime();openBooking('${safeName}','${c.name}')">📌 Забронировать</button>`
+    : '';
+  const fav = isFavorite(ch.n);
+  return `
+    <div class="char-card ${takenClass}" onclick="trackRoleView('${safeName}')">
+      <div class="char-top">
+        <span class="char-name">${ch.n}${c.code ? '' : ''}</span>
+        <div class="char-top-right">
+          <span class="char-status"><span class="dot ${dotClass}"></span>${label}</span>
+          <button class="fav-star ${fav?'active':''}" title="В избранное" onclick="event.stopPropagation();toggleFavorite('${safeName}')">${fav?'★':'☆'}</button>
+        </div>
+      </div>
+      ${hoverInfo}
+      ${bookBtn}
+    </div>`;
+}
+function renderCharGrid(c, query){
+  const grid = document.getElementById('char-grid');
+  const q = query.trim().toLowerCase();
+  const list = c.chars.filter(ch=>ch.n.toLowerCase().includes(q));
+  if(list.length === 0){
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-dim);font-weight:700;">Ничего не найдено</div>`;
+    return;
+  }
+  grid.innerHTML = list.map(ch=>charCardHTML(ch, c)).join('');
+}
+
+/* ================= FAVORITES ================= */
+function getFavorites(){
+  try{ return JSON.parse(localStorage.getItem('ef_favorites')||'[]'); }catch(e){ return []; }
+}
+function isFavorite(name){ return getFavorites().includes(name); }
+function toggleFavorite(name){
+  let favs = getFavorites();
+  const nowFav = !favs.includes(name);
+  if(favs.includes(name)) favs = favs.filter(n=>n!==name);
+  else favs.push(name);
+  try{ localStorage.setItem('ef_favorites', JSON.stringify(favs)); }catch(e){}
+  if(nowFav) playPop(); else playPopDown();
+  if(window.currentRegion) renderCharGrid(window.currentRegion, document.getElementById('char-search-input').value);
+  renderFavGrid();
+}
+function renderFavGrid(){
+  const grid = document.getElementById('fav-grid');
+  if(!grid) return;
+  const favs = getFavorites();
+  const found = [];
+  NATIONS.forEach(c=>{ c.chars.forEach(ch=>{ if(favs.includes(ch.n)) found.push({ch, c}); }); });
+  if(found.length === 0){
+    grid.innerHTML = `<div class="fav-empty"><span class="fe-icon">☆</span>Пока пусто. Нажимайте на звёздочку ☆ у персонажей в разделе «Роли», чтобы добавить их сюда.</div>`;
+    return;
+  }
+  grid.innerHTML = found.map(({ch,c})=>charCardHTML(ch, c)).join('');
+}
+
+/* ================= THEME PICKER ================= */
+const THEMES = {
+  sky:     { sky:"#4fd8ff", "sky-deep":"#1f8fc9", violet:"#9d8cf9", gold:"#e8c988", "border-hi":"rgba(148,197,255,0.35)", glow:"0 0 22px rgba(79,216,255,0.35)" },
+  emerald: { sky:"#3fd6a0", "sky-deep":"#1f9c6c", violet:"#8cf9c8", gold:"#e8c988", "border-hi":"rgba(63,214,160,0.35)",  glow:"0 0 22px rgba(63,214,160,0.35)" },
+  crimson: { sky:"#ff4f6d", "sky-deep":"#c9273f", violet:"#ff9d8c", gold:"#ffcf6d", "border-hi":"rgba(255,79,109,0.35)", glow:"0 0 22px rgba(255,79,109,0.35)" },
+  electro: { sky:"#a06bff", "sky-deep":"#6b3fd9", violet:"#c9a8ff", gold:"#ffd166", "border-hi":"rgba(160,107,255,0.35)",glow:"0 0 22px rgba(160,107,255,0.35)" },
+  snow:    { sky:"#6a8dff", "sky-deep":"#3f5fd9", violet:"#cbd5f0", gold:"#e8c988", "border-hi":"rgba(106,141,255,0.35)",glow:"0 0 22px rgba(106,141,255,0.35)" },
+};
+function setTheme(key){
+  const t = THEMES[key];
+  if(!t) return;
+  const root = document.documentElement.style;
+  Object.entries(t).forEach(([k,v])=>root.setProperty('--'+k, v));
+  document.querySelectorAll('.theme-swatch').forEach(s=>s.classList.toggle('active', s.dataset.theme===key));
+  try{ localStorage.setItem('ef_theme', key); }catch(e){}
+}
+function toggleThemePopover(){
+  document.getElementById('theme-popover').classList.toggle('show');
+}
+document.addEventListener('click', (e)=>{
+  const pop = document.getElementById('theme-popover');
+  if(pop && pop.classList.contains('show') && !pop.contains(e.target) && e.target.id !== 'theme-toggle'){
+    pop.classList.remove('show');
+  }
+});
+(function initTheme(){
+  let saved = 'sky';
+  try{ saved = localStorage.getItem('ef_theme') || 'sky'; }catch(e){}
+  setTheme(saved);
+})();
+document.getElementById('char-search-input').addEventListener('input', (e)=>{
+  if(window.currentRegion) renderCharGrid(window.currentRegion, e.target.value);
+});
+
+function randomRegion(){
+  const c = NATIONS[Math.floor(Math.random()*NATIONS.length)];
+  openNation(c.code);
+}
+
+/* ================= BOOKING MODAL ================= */
+function openBooking(roleName, regionName){
+  document.getElementById('modal-role-name').textContent = `${roleName} (${regionName})`;
+  document.getElementById('copy-feedback').classList.remove('show');
+  document.getElementById('booking-modal').classList.add('show');
+}
+function closeBooking(){
+  document.getElementById('booking-modal').classList.remove('show');
+}
+document.getElementById('booking-modal').addEventListener('click',(e)=>{
+  if(e.target.id === 'booking-modal') closeBooking();
+});
+function copyBookingText(){
+  const role = document.getElementById('modal-role-name').textContent;
+  const text = `Здравствуйте! Хочу забронировать / забрать роль.\nМой юзернейм: @ваш_юзернейм\nРоль: ${role}`;
+  navigator.clipboard.writeText(text).then(()=>{
+    playChime();
+    const fb = document.getElementById('copy-feedback');
+    fb.classList.add('show');
+    setTimeout(()=>fb.classList.remove('show'), 2500);
+  });
+}
+
+/* ================= RULES ACCORDION ================= */
+const rulesList = document.getElementById('rules-list');
+rulesList.innerHTML = RULES.map((r,i)=>`
+  <div class="rule-card" id="rule-${i}">
+    <div class="rule-head" onclick="toggleRule(${i})">
+      <div class="rule-head-left">
+        <div class="rule-num">${i+1}</div>
+        <h4>${r.title}</h4>
+      </div>
+      <span class="rule-chevron">⌄</span>
+    </div>
+    <div class="rule-body"><div class="rule-body-inner">${r.body}</div></div>
+  </div>
+`).join('');
+function toggleRule(i){ playClick(); document.getElementById('rule-'+i).classList.toggle('open'); }
+
+/* ================= MOBILE NAV ================= */
+function toggleMobileNav(){ document.getElementById('main-nav').classList.toggle('mobile-open'); }
+function closeMobileNav(){ document.getElementById('main-nav').classList.remove('mobile-open'); }
+
+/* ================= COUNTDOWN TO NEXT CLEANING (Sunday 20:00 MSK) ================= */
+function updateCountdown(){
+  const now = new Date();
+  const nowUTC = now.getTime() + now.getTimezoneOffset()*60000;
+  const mskNow = new Date(nowUTC + 3*3600000); // MSK = UTC+3
+  const day = mskNow.getDay(); // 0 = Sunday
+  let target = new Date(mskNow);
+  target.setHours(20,0,0,0);
+  let daysUntilSunday = (7 - day) % 7;
+  if(day === 0 && mskNow < target){ daysUntilSunday = 0; }
+  else if(day === 0 && mskNow >= target){ daysUntilSunday = 7; }
+  target.setDate(mskNow.getDate() + daysUntilSunday);
+  let diff = target - mskNow;
+  if(diff < 0) diff += 7*24*3600000;
+  const d = Math.floor(diff/86400000);
+  const h = Math.floor((diff%86400000)/3600000);
+  const m = Math.floor((diff%3600000)/60000);
+  const s = Math.floor((diff%60000)/1000);
+  document.getElementById('countdown-timer').textContent =
+    `${d}д ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+updateCountdown();
+setInterval(updateCountdown, 1000);
+
+/* ================= BACK TO TOP ================= */
+const backBtn = document.getElementById('back-to-top');
+window.addEventListener('scroll', ()=>{
+  if(window.scrollY > 400) backBtn.classList.add('show');
+  else backBtn.classList.remove('show');
+});
+backBtn.addEventListener('click', ()=>{ playWhoosh(); window.scrollTo({top:0, behavior:'smooth'}); });
+
+document.querySelector('#nav-list a[data-page="page-home"]').classList.add('active');
+document.querySelectorAll('#nav-list a').forEach(a=>{ a.addEventListener('click', ()=>playClick()); });
+</script>
+</body>
+</html>
